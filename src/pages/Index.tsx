@@ -25,8 +25,11 @@ const Index = () => {
   const [uptime, setUptime] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  const api = useMemo(() => new ApiService(settings.ip), []);
+  const api = useMemo(() => new ApiService(settings.ip), []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.setIp(settings.ip); }, [api, settings.ip]);
+
+  const isHttpsBlocked = window.location.protocol === 'https:';
+
 
   const pollRef = useRef<number | null>(null);
   const failCount = useRef(0);
@@ -41,8 +44,8 @@ const Index = () => {
       setSpeed(st.speed);
       setTurbo(st.turbo);
       setUptime(st.uptime);
-      if (!draggingRef.current && st.speed > 0 && st.state === 'running') {
-        // keep slider in sync with device when not dragging
+      if (!draggingRef.current) {
+        setTargetSpeed(st.speed);
       }
     } catch {
       failCount.current += 1;
@@ -128,6 +131,26 @@ const Index = () => {
             <Icon name="Settings" size={18} />
           </button>
         </header>
+
+        {/* HTTPS blocked warning */}
+        {isHttpsBlocked && (
+          <div className="glass rounded-2xl border border-yellow-400/40 p-4 animate-rise" style={{ boxShadow: '0 0 16px hsl(50 100% 55% / 0.2)' }}>
+            <div className="flex items-start gap-3">
+              <Icon name="TriangleAlert" size={18} className="text-yellow-300 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-mono-tech text-xs text-yellow-300 font-bold tracking-wider mb-1">ОГРАНИЧЕНИЕ БРАУЗЕРА</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Сайт открыт по HTTPS — браузер блокирует запросы к ESP (HTTP). Для реального управления:
+                </p>
+                <ol className="text-xs text-muted-foreground mt-2 space-y-1 list-decimal list-inside leading-relaxed">
+                  <li>Подключи телефон к Wi-Fi точке ESP8266</li>
+                  <li>Скачай билд: <strong className="text-yellow-300">Скачать → Скачать билд</strong></li>
+                  <li>Открой <code className="text-primary">index.html</code> в браузере телефона</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Connection lost banner */}
         {!connected && (
