@@ -137,16 +137,15 @@ const Index = () => {
           <div className="glass rounded-2xl border border-yellow-400/40 p-4 animate-rise" style={{ boxShadow: '0 0 16px hsl(50 100% 55% / 0.2)' }}>
             <div className="flex items-start gap-3">
               <Icon name="TriangleAlert" size={18} className="text-yellow-300 shrink-0 mt-0.5" />
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-mono-tech text-xs text-yellow-300 font-bold tracking-wider mb-1">ОГРАНИЧЕНИЕ БРАУЗЕРА</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Сайт открыт по HTTPS — браузер блокирует запросы к ESP (HTTP). Для реального управления:
+                <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                  Браузер блокирует HTTP к ESP с HTTPS-страницы. Скачай автономный файл и открой его на телефоне в сети ESP.
                 </p>
-                <ol className="text-xs text-muted-foreground mt-2 space-y-1 list-decimal list-inside leading-relaxed">
-                  <li>Подключи телефон к Wi-Fi точке ESP8266</li>
-                  <li>Скачай билд: <strong className="text-yellow-300">Скачать → Скачать билд</strong></li>
-                  <li>Открой <code className="text-primary">index.html</code> в браузере телефона</li>
-                </ol>
+                <a href="/motor.html" download="motor-controller.html"
+                  className="inline-flex items-center gap-2 bg-yellow-300/15 border border-yellow-300/50 text-yellow-300 px-4 py-2 rounded-xl text-xs font-bold font-mono-tech tracking-wider transition-all active:scale-95">
+                  <Icon name="Download" size={14} /> Скачать motor-controller.html
+                </a>
               </div>
             </div>
           </div>

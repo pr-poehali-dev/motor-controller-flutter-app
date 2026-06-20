@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Motor Controller</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@400;700&family=Rubik:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #080d17;
+    --card: #0e1520;
+    --border: #1a3040;
+    --cyan: #00ffe0;
+    --magenta: #cc00ff;
+    --red: #ff1a4a;
+    --yellow: #ffe033;
+    --muted: #4a6070;
+    --text: #d0f5f0;
+    --radius: 20px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rubik', sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 20px 16px 32px;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(0,255,224,0.07) 0%, transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(204,0,255,0.07) 0%, transparent 40%),
+      linear-gradient(rgba(0,255,224,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,224,0.03) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+    overflow-x: hidden;
+  }
+
+  .scanline {
+    position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden; opacity: 0.04;
+  }
+  .scanline::after {
+    content: ''; position: absolute; left: 0; right: 0; height: 80px;
+    background: linear-gradient(transparent, var(--cyan), transparent);
+    animation: scan 7s linear infinite;
+  }
+  @keyframes scan { from { top: -80px; } to { top: 100vh; } }
+
+  .wrap { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  /* HEADER */
+  .header { display: flex; align-items: center; gap: 12px; animation: rise .4s ease both; }
+  .logo {
+    width: 48px; height: 48px; border-radius: 14px; object-fit: cover; flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(0,255,224,0.4), 0 0 18px rgba(0,255,224,0.25);
+  }
+  .header-text { flex: 1; min-width: 0; }
+  .header-title {
+    font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 20px;
+    letter-spacing: 0.2em; line-height: 1; color: var(--cyan);
+    text-shadow: 0 0 8px rgba(0,255,224,0.8), 0 0 24px rgba(0,255,224,0.4);
+  }
+  .header-sub {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.3em; color: var(--magenta);
+    text-shadow: 0 0 8px rgba(204,0,255,0.7); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .conn-badge {
+    display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.15em;
+    background: rgba(14,21,32,0.7); backdrop-filter: blur(12px);
+    border: 1px solid; transition: all .3s;
+  }
+  .conn-badge.online { border-color: rgba(0,255,224,0.4); color: var(--cyan); }
+  .conn-badge.offline { border-color: rgba(255,26,74,0.4); color: var(--red); }
+  .conn-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .conn-badge.online .conn-dot { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: blink 1.5s ease-in-out infinite; }
+  .conn-badge.offline .conn-dot { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .btn-settings {
+    width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border);
+    background: rgba(14,21,32,0.7); backdrop-filter: blur(12px);
+    color: var(--cyan); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .2s; flex-shrink: 0;
+  }
+  .btn-settings:active { transform: scale(0.92); }
+
+  /* GLASS CARD */
+  .card {
+    background: rgba(14,21,32,0.7); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;
+    animation: rise .4s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* BANNER */
+  .banner {
+    border-radius: var(--radius); padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: rgba(14,21,32,0.7); backdrop-filter: blur(12px);
+    cursor: pointer; border: 1px solid rgba(255,26,74,0.5);
+    box-shadow: 0 0 20px rgba(255,26,74,0.2); animation: rise .3s ease both;
+  }
+  .banner-left { display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--red); }
+  .banner-btn {
+    display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+    background: rgba(255,26,74,0.15); color: var(--red);
+    padding: 6px 12px; border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* GAUGE */
+  .gauge-wrap { position: relative; width: 220px; height: 220px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+  .gauge-svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .gauge-track { fill: none; stroke: rgba(26,48,64,0.5); stroke-width: 6; }
+  .gauge-arc { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset .5s ease, stroke .3s; }
+  .gauge-center { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+  .gauge-icon { font-size: 28px; margin-bottom: 4px; }
+  .gauge-value {
+    font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 64px; line-height: 1;
+    transition: color .3s;
+  }
+  .gauge-unit { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--muted); margin-top: 4px; }
+  .turbo-badge {
+    margin-top: 8px; display: flex; align-items: center; gap: 4px;
+    font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.3em;
+    color: var(--yellow); border: 1px solid rgba(255,224,51,0.4);
+    padding: 2px 8px; border-radius: 99px;
+    box-shadow: 0 0 12px rgba(255,224,51,0.4);
+  }
+  .pulse-ring {
+    position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(0,255,224,0.25);
+    animation: pulse-ring 2s ease-in-out infinite;
+  }
+  .pulse-ring-2 {
+    position: absolute; inset: 8px; border-radius: 50%; border: 1px solid rgba(204,0,255,0.15);
+    animation: pulse-ring 2s ease-in-out infinite .4s;
+  }
+  @keyframes pulse-ring { 0%,100% { transform: scale(0.96); opacity: .7; } 50% { transform: scale(1.04); opacity: .3; } }
+
+  /* STAT CARDS */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .stat-card { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 16px; padding: 12px; }
+  .stat-label { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.25em; color: var(--muted); margin-bottom: 4px; }
+  .stat-value { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 13px; }
+
+  /* SLIDER */
+  .slider-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .slider-label { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--muted); }
+  .slider-val { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 20px; color: var(--cyan); text-shadow: 0 0 8px rgba(0,255,224,0.7); }
+  .slider-ticks { display: flex; justify-content: space-between; margin-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); }
+
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px; border-radius: 99px;
+    background: var(--border); outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--cyan);
+    box-shadow: 0 0 10px rgba(0,255,224,0.6);
+    cursor: pointer; transition: transform .15s;
+  }
+  input[type=range]:active::-webkit-slider-thumb { transform: scale(1.2); }
+  input[type=range]:disabled { opacity: 0.3; cursor: not-allowed; }
+  input[type=range]:disabled::-webkit-slider-thumb { cursor: not-allowed; }
+
+  /* CONTROL BUTTONS */
+  .ctrl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ctrl-btn {
+    border-radius: var(--radius); border: 1px solid; padding: 18px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    cursor: pointer; transition: all .2s; background: rgba(14,21,32,0.7);
+    backdrop-filter: blur(12px);
+  }
+  .ctrl-btn:active:not(:disabled) { transform: scale(0.94); }
+  .ctrl-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+  .ctrl-btn-icon { font-size: 32px; line-height: 1; }
+  .ctrl-btn-label { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.2em; }
+
+  .btn-start { border-color: rgba(0,255,224,0.5); color: var(--cyan); }
+  .btn-start.active { background: rgba(0,255,224,0.1); box-shadow: 0 0 20px rgba(0,255,224,0.4); }
+  .btn-stop { border-color: var(--border); color: var(--text); }
+  .btn-turbo { border-color: rgba(255,224,51,0.5); color: var(--yellow); }
+  .btn-turbo.active { background: rgba(255,224,51,0.1); box-shadow: 0 0 20px rgba(255,224,51,0.35); }
+  .btn-emergency { border-color: rgba(255,26,74,0.5); color: var(--red); }
+  .btn-emergency.active { background: rgba(255,26,74,0.1); box-shadow: 0 0 20px rgba(255,26,74,0.4); }
+
+  .reset-btn {
+    border-radius: var(--radius); border: 1px solid var(--border); padding: 12px;
+    background: rgba(14,21,32,0.7); backdrop-filter: blur(12px);
+    color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    cursor: pointer; transition: all .2s; text-align: center; display: none;
+  }
+  .reset-btn:active { transform: scale(0.97); }
+
+  .footer { text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(74,96,112,0.6); letter-spacing: 0.2em; padding-top: 4px; }
+
+  /* SETTINGS MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+    z-index: 100; display: flex; align-items: flex-end; opacity: 0; pointer-events: none;
+    transition: opacity .25s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    width: 100%; background: #0e1520; border-top: 1px solid var(--border);
+    border-radius: 24px 24px 0 0; padding: 24px 20px 40px;
+    transform: translateY(100%); transition: transform .3s ease;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 99px; margin: 0 auto 20px; }
+  .modal-title { font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 0.2em; color: var(--cyan); text-shadow: 0 0 8px rgba(0,255,224,0.6); margin-bottom: 20px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.25em; color: var(--muted); margin-bottom: 8px; }
+  .field input[type=text] {
+    width: 100%; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+    color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    outline: none; transition: border-color .2s;
+  }
+  .field input[type=text]:focus { border-color: var(--cyan); }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 16px; padding: 14px;
+  }
+  .toggle-label { font-size: 14px; font-weight: 500; }
+  .toggle-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .toggle {
+    position: relative; width: 44px; height: 24px; flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0; border-radius: 99px; background: var(--border);
+    cursor: pointer; transition: .2s;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%;
+    left: 3px; top: 3px; background: var(--muted); transition: .2s;
+  }
+  .toggle input:checked + .toggle-slider { background: rgba(0,255,224,0.3); border: 1px solid var(--cyan); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(20px); background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+
+  .save-btn {
+    width: 100%; padding: 14px; border-radius: 14px; border: none; margin-top: 20px;
+    background: rgba(0,255,224,0.15); border: 1px solid rgba(0,255,224,0.4);
+    color: var(--cyan); font-family: 'Orbitron', sans-serif; font-size: 13px;
+    font-weight: 700; letter-spacing: 0.15em; cursor: pointer; transition: all .2s;
+    box-shadow: 0 0 16px rgba(0,255,224,0.2);
+  }
+  .save-btn:active { transform: scale(0.97); }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<div class="wrap">
+  <!-- HEADER -->
+  <header class="header">
+    <img class="logo" src="https://cdn.poehali.dev/projects/a8cc62f8-b096-4667-89e2-dde214e0303c/files/8a8bd75b-3712-4107-8dd3-1f8598e7e0c1.jpg" alt="Motor Controller"/>
+    <div class="header-text">
+      <div class="header-title">MOTOR</div>
+      <div class="header-sub" id="device-name">ESP8266 Motor</div>
+    </div>
+    <div class="conn-badge offline" id="conn-badge">
+      <div class="conn-dot"></div>
+      <span id="conn-label">OFFLINE</span>
+    </div>
+    <button class="btn-settings" onclick="openSettings()">⚙️</button>
+  </header>
+
+  <!-- OFFLINE BANNER -->
+  <div class="banner" id="offline-banner" onclick="reconnect()" style="display:none">
+    <div class="banner-left">📡 Нет связи с устройством</div>
+    <div class="banner-btn">↺ Повторить</div>
+  </div>
+
+  <!-- GAUGE CARD -->
+  <div class="card" style="animation-delay:.06s">
+    <div class="gauge-wrap">
+      <div class="pulse-ring" id="ring1" style="display:none"></div>
+      <div class="pulse-ring-2" id="ring2" style="display:none"></div>
+      <svg class="gauge-svg" viewBox="0 0 220 220">
+        <circle class="gauge-track" cx="110" cy="110" r="96"/>
+        <circle class="gauge-arc" id="gauge-arc" cx="110" cy="110" r="96"
+          stroke-dasharray="603.19" stroke-dashoffset="603.19" stroke="var(--cyan)"/>
+      </svg>
+      <div class="gauge-center">
+        <div class="gauge-icon" id="gauge-icon">⏻</div>
+        <div class="gauge-value" id="gauge-value" style="color:var(--muted)">0</div>
+        <div class="gauge-unit">% МОЩНОСТИ</div>
+        <div class="turbo-badge" id="turbo-badge" style="display:none">⚡ TURBO</div>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">📊 СОСТОЯНИЕ</div>
+        <div class="stat-value" id="stat-state" style="color:var(--muted)">НЕТ СВЯЗИ</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">⏱ ВРЕМЯ РАБОТЫ</div>
+        <div class="stat-value" id="stat-uptime" style="color:var(--cyan)">00:00</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPEED SLIDER -->
+  <div class="card" style="animation-delay:.12s">
+    <div class="slider-header">
+      <div class="slider-label">🎚 ЦЕЛЕВАЯ СКОРОСТЬ</div>
+      <div class="slider-val" id="speed-display">40%</div>
+    </div>
+    <input type="range" id="speed-slider" min="0" max="100" value="40"
+      oninput="onSpeedInput(this.value)"
+      onchange="onSpeedCommit(this.value)"/>
+    <div class="slider-ticks"><span>0</span><span>50</span><span>100</span></div>
+  </div>
+
+  <!-- CONTROL BUTTONS -->
+  <div class="ctrl-grid">
+    <button class="ctrl-btn btn-start" id="btn-start" onclick="cmdStart()" disabled>
+      <div class="ctrl-btn-icon">▶</div>
+      <div class="ctrl-btn-label">СТАРТ</div>
+    </button>
+    <button class="ctrl-btn btn-stop" id="btn-stop" onclick="cmdStop()" disabled>
+      <div class="ctrl-btn-icon">■</div>
+      <div class="ctrl-btn-label">СТОП</div>
+    </button>
+    <button class="ctrl-btn btn-turbo" id="btn-turbo" onclick="cmdTurbo()" disabled>
+      <div class="ctrl-btn-icon">⚡</div>
+      <div class="ctrl-btn-label">ТУРБО</div>
+    </button>
+    <button class="ctrl-btn btn-emergency" id="btn-emergency" onclick="cmdEmergency()" disabled>
+      <div class="ctrl-btn-icon">🛑</div>
+      <div class="ctrl-btn-label">АВАРИЯ</div>
+    </button>
+  </div>
+
+  <button class="reset-btn" id="reset-btn" onclick="cmdStop()">↺ Сбросить аварию</button>
+
+  <div class="footer" id="footer-ip">ESP8266 · 192.168.4.1 · v1.0</div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-overlay" onclick="closeSettings(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙ НАСТРОЙКИ</div>
+
+    <div class="field">
+      <label>IP-АДРЕС ESP</label>
+      <input type="text" id="inp-ip" value="192.168.4.1" inputmode="decimal" placeholder="192.168.4.1"/>
+    </div>
+    <div class="field">
+      <label>ИМЯ УСТРОЙСТВА</label>
+      <input type="text" id="inp-name" value="ESP8266 Motor" placeholder="ESP8266 Motor"/>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Автоподключение</div>
+        <div class="toggle-sub">Подключаться при запуске</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="inp-auto" checked/>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <button class="save-btn" onclick="saveSettings()">СОХРАНИТЬ</button>
+  </div>
+</div>
+
+<script>
+// ── Settings ──────────────────────────────────────────────────────────────────
+const STORE_KEY = 'mctrl-v1';
+let cfg = { ip: '192.168.4.1', name: 'ESP8266 Motor', auto: true };
+
+function loadSettings() {
+  try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s) cfg = { ...cfg, ...s }; } catch {}
+}
+function saveSettingsStore() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(cfg)); } catch {}
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+const TIMEOUT = 2000;
+
+async function apiCall(path) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT);
+  try {
+    const res = await fetch(`http://${cfg.ip}${path}`, { signal: ctrl.signal, cache: 'no-store' });
+    return res;
+  } finally { clearTimeout(t); }
+}
+
+async function getStatus() {
+  const res = await apiCall('/status');
+  let data = {};
+  try { data = await res.json(); } catch {
+    const txt = await res.clone().text().catch(() => '');
+    txt.split(/[,;\n&]/).forEach(pair => {
+      const [k, v] = pair.split(/[:=]/).map(x => x?.trim());
+      if (k) data[k.toLowerCase()] = v;
+    });
+  }
+  const raw = String(data.state ?? data.status ?? data.motor ?? '').toLowerCase();
+  let state = 'stopped';
+  if (raw.includes('emerg') || raw.includes('авар')) state = 'emergency';
+  else if (raw.includes('run') || raw.includes('start') || raw === '1' || raw === 'on') state = 'running';
+  return {
+    state,
+    speed: Number(data.speed ?? data.value ?? 0) || 0,
+    uptime: Number(data.uptime ?? data.time ?? 0) || 0,
+    turbo: data.turbo === true || data.turbo === 'true' || data.turbo === '1',
+  };
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let connected = false;
+let motorState = 'stopped';
+let currentSpeed = 0;
+let currentUptime = 0;
+let isTurbo = false;
+let busy = false;
+let failCount = 0;
+let pollTimer = null;
+let sliderDragging = false;
+let uptimeSeconds = 0;
+let uptimeTimer = null;
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const ARC_LEN = 603.19; // 2π×96
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  // connection
+  const badge = $('conn-badge');
+  badge.className = 'conn-badge ' + (connected ? 'online' : 'offline');
+  $('conn-label').textContent = connected ? 'ONLINE' : 'OFFLINE';
+  $('offline-banner').style.display = connected ? 'none' : 'flex';
+
+  // pulse rings
+  const running = connected && motorState === 'running';
+  $('ring1').style.display = running ? '' : 'none';
+  $('ring2').style.display = running ? '' : 'none';
+
+  // gauge arc
+  const arc = $('gauge-arc');
+  const pct = connected ? currentSpeed / 100 : 0;
+  arc.style.strokeDashoffset = ARC_LEN * (1 - pct);
+  if (!connected) arc.style.stroke = '#1a3040';
+  else if (motorState === 'emergency') arc.style.stroke = 'var(--red)';
+  else if (isTurbo) arc.style.stroke = 'var(--yellow)';
+  else arc.style.stroke = 'var(--cyan)';
+
+  // gauge center
+  const icons = { stopped: '⏻', running: '⚡', emergency: '⚠️' };
+  $('gauge-icon').textContent = connected ? icons[motorState] : '📡';
+  const valEl = $('gauge-value');
+  valEl.textContent = currentSpeed;
+  if (!connected) valEl.style.color = 'var(--muted)';
+  else if (motorState === 'emergency') valEl.style.color = 'var(--red)';
+  else valEl.style.color = 'var(--cyan)';
+
+  $('turbo-badge').style.display = (isTurbo && connected) ? 'flex' : 'none';
+
+  // stat state
+  const stateLabels = { stopped: 'ОСТАНОВЛЕН', running: 'РАБОТАЕТ', emergency: 'АВАРИЯ' };
+  const stateColors = { stopped: 'var(--muted)', running: 'var(--cyan)', emergency: 'var(--red)' };
+  const statEl = $('stat-state');
+  statEl.textContent = connected ? stateLabels[motorState] : 'НЕТ СВЯЗИ';
+  statEl.style.color = connected ? stateColors[motorState] : 'var(--muted)';
+
+  // uptime
+  const m = Math.floor(uptimeSeconds / 60), s = Math.floor(uptimeSeconds % 60);
+  $('stat-uptime').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+  // buttons
+  const dis = !connected || busy;
+  const emerg = motorState === 'emergency';
+  $('btn-start').disabled = dis || emerg;
+  $('btn-stop').disabled = dis;
+  $('btn-turbo').disabled = dis || motorState !== 'running';
+  $('btn-emergency').disabled = dis;
+  $('speed-slider').disabled = dis || emerg;
+
+  $('btn-start').classList.toggle('active', connected && motorState === 'running');
+  $('btn-turbo').classList.toggle('active', isTurbo);
+  $('btn-emergency').classList.toggle('active', motorState === 'emergency');
+
+  $('reset-btn').style.display = (connected && emerg) ? 'block' : 'none';
+}
+
+// ── Uptime local counter ──────────────────────────────────────────────────────
+function startUptimeCounter() {
+  stopUptimeCounter();
+  uptimeTimer = setInterval(() => {
+    if (motorState === 'running' && connected) uptimeSeconds += 1;
+  }, 1000);
+}
+function stopUptimeCounter() {
+  if (uptimeTimer) { clearInterval(uptimeTimer); uptimeTimer = null; }
+}
+
+// ── Poll ──────────────────────────────────────────────────────────────────────
+async function poll() {
+  try {
+    const st = await getStatus();
+    failCount = 0;
+    const wasConnected = connected;
+    connected = true;
+    motorState = st.state;
+    currentSpeed = st.speed;
+    isTurbo = st.turbo;
+    if (st.uptime > 0) uptimeSeconds = st.uptime;
+    if (!wasConnected) startUptimeCounter();
+    render();
+  } catch {
+    failCount++;
+    if (failCount >= 2) { connected = false; render(); }
+  }
+}
+
+function startPolling() {
+  if (pollTimer) return;
+  poll();
+  pollTimer = setInterval(poll, 500);
+}
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function reconnect() {
+  failCount = 0;
+  stopPolling(); startPolling();
+}
+
+// ── Commands ──────────────────────────────────────────────────────────────────
+async function sendCmd(path) {
+  if (busy) return;
+  busy = true; render();
+  try { await apiCall(path); await poll(); }
+  catch { failCount++; if (failCount >= 2) { connected = false; } }
+  finally { busy = false; render(); }
+}
+
+function cmdStart()     { sendCmd('/start'); }
+function cmdStop()      { sendCmd('/stop'); uptimeSeconds = 0; }
+function cmdTurbo()     { sendCmd('/turbo'); }
+function cmdEmergency() { sendCmd('/emergency'); }
+
+function onSpeedInput(v) {
+  sliderDragging = true;
+  $('speed-display').textContent = v + '%';
+}
+function onSpeedCommit(v) {
+  sliderDragging = false;
+  apiCall(`/speed?value=${v}`).catch(() => { failCount++; if (failCount >= 2) { connected = false; render(); } });
+}
+
+// ── Settings modal ────────────────────────────────────────────────────────────
+function openSettings() {
+  $('inp-ip').value = cfg.ip;
+  $('inp-name').value = cfg.name;
+  $('inp-auto').checked = cfg.auto;
+  $('settings-overlay').classList.add('open');
+}
+function closeSettings(e) {
+  if (e.target === $('settings-overlay')) $('settings-overlay').classList.remove('open');
+}
+function saveSettings() {
+  cfg.ip = $('inp-ip').value.trim() || '192.168.4.1';
+  cfg.name = $('inp-name').value.trim() || 'ESP8266 Motor';
+  cfg.auto = $('inp-auto').checked;
+  saveSettingsStore();
+  $('device-name').textContent = cfg.name;
+  $('footer-ip').textContent = `ESP8266 · ${cfg.ip} · v1.0`;
+  $('settings-overlay').classList.remove('open');
+  reconnect();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadSettings();
+$('inp-ip').value = cfg.ip;
+$('inp-name').value = cfg.name;
+$('device-name').textContent = cfg.name;
+$('footer-ip').textContent = `ESP8266 · ${cfg.ip} · v1.0`;
+render();
+if (cfg.auto) startPolling();
+startUptimeCounter();
+</script>
+</body>
+</html>
